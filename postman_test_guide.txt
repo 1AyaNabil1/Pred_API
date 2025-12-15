@@ -1,0 +1,93 @@
+========================================
+POSTMAN TESTING GUIDE FOR MyModel API
+========================================
+
+BASE URL: http://localhost:8000
+
+========================================
+1. TEST PREDICT ENDPOINT
+========================================
+
+Method: POST
+URL: http://localhost:8000/predict/MyModel
+
+Headers:
+  Content-Type: application/json
+
+Body (raw JSON):
+{
+  "inputs": [[5.1, 3.5, 1.4, 0.2]]
+}
+
+Expected Response (200 OK):
+{
+  "predictions": [0],
+  "model_name": "MyModel",
+  "model_uri": "models:/MyModel/Production",
+  "latency_ms": 12.34,
+  "request_id": "abc123..."
+}
+
+========================================
+2. TEST WITH SPECIFIC VERSION
+========================================
+
+Method: POST
+URL: http://localhost:8000/predict/MyModel
+
+Headers:
+  Content-Type: application/json
+
+Body (raw JSON):
+{
+  "inputs": [[5.1, 3.5, 1.4, 0.2]],
+  "version": "1"
+}
+
+========================================
+3. TEST LIST ALL MODELS
+========================================
+
+Method: POST
+URL: http://localhost:8000/mlflow/registered-models/search
+
+Headers:
+  Content-Type: application/json
+
+Body (raw JSON):
+{}
+
+Expected Response (200 OK):
+{
+  "registered_models": [
+    {
+      "name": "MyModel",
+      "creation_timestamp": "...",
+      "last_updated_timestamp": "...",
+      "latest_versions": [...]
+    }
+  ]
+}
+
+========================================
+4. TEST GET MODEL DETAILS
+========================================
+
+Method: POST
+URL: http://localhost:8000/mlflow/registered-models/get
+
+Headers:
+  Content-Type: application/json
+
+Body (raw JSON):
+{
+  "name": "MyModel"
+}
+
+========================================
+NOTES:
+========================================
+- No API key required (API_KEY_REQUIRED=false)
+- Model name must be in URL path: /predict/{model_name}
+- Inputs must be in proper format (array of arrays for sklearn models)
+- If Production stage not found, it will fallback to latest version
