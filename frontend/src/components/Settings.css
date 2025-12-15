@@ -1,0 +1,80 @@
+.settings {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.settings-description {
+  color: var(--text-secondary);
+  margin-bottom: 2.5rem;
+  line-height: 1.7;
+  font-size: 1rem;
+}
+
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.form-group small {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin-top: 0.75rem;
+  line-height: 1.5;
+}
+
+.settings-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2.5rem;
+}
+
+.settings-actions button {
+  padding: 0.85rem 2rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.settings-info {
+  margin-top: 3rem;
+  padding-top: 2.5rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.settings-info h3 {
+  color: var(--text-primary);
+  font-size: 1.4rem;
+  margin-bottom: 1.5rem;
+  font-weight: 600;
+}
+
+.settings-info ul {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.settings-info li {
+  color: var(--text-secondary);
+  line-height: 1.7;
+  padding-left: 2rem;
+  position: relative;
+  font-size: 0.95rem;
+}
+
+.settings-info li::before {
+  content: "→";
+  position: absolute;
+  left: 0;
+  color: var(--accent-blue);
+  font-size: 1.2rem;
+}
+
+.settings-info strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}

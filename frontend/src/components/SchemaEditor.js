@@ -1,0 +1,353 @@
+import React, { useState, useEffect } from 'react';
+import './SchemaEditor.css';
+
+function SchemaEditor({ modelName, version, metadata, config }) {
+  const [schema, setSchema] = useState(null);
+  const [editMode, setEditMode] = useState(false);
+  const [customSchema, setCustomSchema] = useState({
+    inputs: [],
+    outputs: []
+  });
+
+  useEffect(() => {
+    if (metadata) {
+      // Try to parse signature from metadata
+      if (metadata.signature) {
+        try {
+          const sig = typeof metadata.signature === 'string' 
+            ? JSON.parse(metadata.signature) 
+            : metadata.signature;
+          setSchema(sig);
+          // Initialize custom schema from existing schema
+          setCustomSchema({
+            inputs: sig.inputs || [],
+            outputs: sig.outputs || []
+          });
+        } catch (e) {
+          console.error('Failed to parse signature:', e);
+        }
+      }
+
+      // Check for input_example
+      if (metadata.input_example && !schema) {
+        setEditMode(true);
+      }
+    }
+  }, [metadata]);
+
+  const addInputField = () => {
+    setCustomSchema({
+      ...customSchema,
+      inputs: [...customSchema.inputs, { name: '', dtype: 'string', example: '' }]
+    });
+  };
+
+  const addOutputField = () => {
+    setCustomSchema({
+      ...customSchema,
+      outputs: [...customSchema.outputs, { name: '', dtype: 'string' }]
+    });
+  };
+
+  const updateInputField = (index, field, value) => {
+    const newInputs = [...customSchema.inputs];
+    newInputs[index][field] = value;
+    setCustomSchema({ ...customSchema, inputs: newInputs });
+  };
+
+  const updateOutputField = (index, field, value) => {
+    const newOutputs = [...customSchema.outputs];
+    newOutputs[index][field] = value;
+    setCustomSchema({ ...customSchema, outputs: newOutputs });
+  };
+
+  const removeInputField = (index) => {
+    setCustomSchema({
+      ...customSchema,
+      inputs: customSchema.inputs.filter((_, i) => i !== index)
+    });
+  };
+
+  const removeOutputField = (index) => {
+    setCustomSchema({
+      ...customSchema,
+      outputs: customSchema.outputs.filter((_, i) => i !== index)
+    });
+  };
+
+  const handleSaveSchema = () => {
+    // Save the custom schema
+    setSchema(customSchema);
+    setEditMode(false);
+    alert('Schema saved successfully! Note: This is a UI-only save. To persist changes, integrate with your backend API.');
+  };
+
+  const handleCancelEdit = () => {
+    // Reset custom schema to current schema
+    if (schema) {
+      setCustomSchema({
+        inputs: schema.inputs || [],
+        outputs: schema.outputs || []
+      });
+    } else {
+      setCustomSchema({
+        inputs: [],
+        outputs: []
+      });
+    }
+    setEditMode(false);
+  };
+
+  const getTypeIcon = (type) => {
+    const typeMap = {
+      'string': 'T',
+      'integer': '#',
+      'long': '#',
+      'float': '0.0',
+      'double': '0.0',
+      'boolean': 'T/F',
+      'array': '[]',
+      'object': '{}',
+      'datetime': 'D'
+    };
+    return typeMap[type?.toLowerCase()] || '?';
+  };
+
+  const formatType = (type) => {
+    if (!type) return 'unknown';
+    const typeStr = type.toLowerCase();
+    return typeStr.charAt(0).toUpperCase() + typeStr.slice(1);
+  };
+
+  const renderSignature = () => {
+    if (!schema) {
+      return (
+        <div className="schema-display">
+          <div className="no-schema-message">
+            <p>No schema information available for this model.</p>
+            <p style={{ fontSize: '0.9rem', marginTop: '0.5rem' }}>
+              Click "Edit" to manually define the input/output schema.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="schema-display">
+        <div className="schema-section">
+          <div className="section-title">
+            <h4>Input Schema</h4>
+            <span className="field-count">
+              {schema.inputs && Array.isArray(schema.inputs) ? `${schema.inputs.length} field(s)` : ''}
+            </span>
+          </div>
+          {schema.inputs ? (
+            <div className="schema-fields">
+              {Array.isArray(schema.inputs) ? (
+                schema.inputs.length > 0 ? (
+                  schema.inputs.map((input, idx) => {
+                    const fieldName = input.name || input.type || `field_${idx}`;
+                    const fieldType = input.type || input.dtype || 'unknown';
+                    return (
+                      <div key={idx} className="schema-field">
+                        <div className="field-icon">{getTypeIcon(fieldType)}</div>
+                        <div className="field-info">
+                          <span className="field-name">{fieldName}</span>
+                          <span className="field-type">{formatType(fieldType)}</span>
+                        </div>
+                        {input.required !== undefined && (
+                          <span className={`field-badge ${input.required ? 'required' : 'optional'}`}>
+                            {input.required ? 'Required' : 'Optional'}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p className="no-schema">No input fields defined</p>
+                )
+              ) : (
+                <pre className="schema-raw">{JSON.stringify(schema.inputs, null, 2)}</pre>
+              )}
+            </div>
+          ) : (
+            <p className="no-schema">No input schema available</p>
+          )}
+        </div>
+
+        <div className="schema-section">
+          <div className="section-title">
+            <h4>Output Schema</h4>
+            <span className="field-count">
+              {schema.outputs && Array.isArray(schema.outputs) ? `${schema.outputs.length} field(s)` : ''}
+            </span>
+          </div>
+          {schema.outputs ? (
+            <div className="schema-fields">
+              {Array.isArray(schema.outputs) ? (
+                schema.outputs.length > 0 ? (
+                  schema.outputs.map((output, idx) => {
+                    const fieldName = output.name || output.type || `field_${idx}`;
+                    const fieldType = output.type || output.dtype || 'unknown';
+                    return (
+                      <div key={idx} className="schema-field">
+                        <div className="field-icon">{getTypeIcon(fieldType)}</div>
+                        <div className="field-info">
+                          <span className="field-name">{fieldName}</span>
+                          <span className="field-type">{formatType(fieldType)}</span>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p className="no-schema">No output fields defined</p>
+                )
+              ) : (
+                <pre className="schema-raw">{JSON.stringify(schema.outputs, null, 2)}</pre>
+              )}
+            </div>
+          ) : (
+            <p className="no-schema">No output schema available</p>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderEditor = () => {
+    return (
+      <div className="schema-editor">
+        <div className="schema-section">
+          <div className="section-header">
+            <h4>Input Schema</h4>
+            <button className="btn btn-sm btn-primary" onClick={addInputField}>
+              + Add Field
+            </button>
+          </div>
+          {customSchema.inputs.length === 0 ? (
+            <p className="no-schema">No input fields defined. Click "+ Add Field" to add fields.</p>
+          ) : (
+            customSchema.inputs.map((input, idx) => (
+              <div key={idx} className="field-editor">
+                <input
+                  type="text"
+                  placeholder="Field name"
+                  value={input.name}
+                  onChange={(e) => updateInputField(idx, 'name', e.target.value)}
+                />
+                <select
+                  value={input.dtype}
+                  onChange={(e) => updateInputField(idx, 'dtype', e.target.value)}
+                >
+                  <option value="string">string</option>
+                  <option value="integer">integer</option>
+                  <option value="float">float</option>
+                  <option value="boolean">boolean</option>
+                  <option value="array">array</option>
+                  <option value="object">object</option>
+                </select>
+                <input
+                  type="text"
+                  placeholder="Example value"
+                  value={input.example}
+                  onChange={(e) => updateInputField(idx, 'example', e.target.value)}
+                />
+                <button 
+                  className="btn btn-danger btn-sm"
+                  onClick={() => removeInputField(idx)}
+                  title="Remove field"
+                >
+                  ×
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="schema-section">
+          <div className="section-header">
+            <h4>Output Schema</h4>
+            <button className="btn btn-sm btn-primary" onClick={addOutputField}>
+              + Add Field
+            </button>
+          </div>
+          {customSchema.outputs.length === 0 ? (
+            <p className="no-schema">No output fields defined. Click "+ Add Field" to add fields.</p>
+          ) : (
+            customSchema.outputs.map((output, idx) => (
+              <div key={idx} className="field-editor">
+                <input
+                  type="text"
+                  placeholder="Field name"
+                  value={output.name}
+                  onChange={(e) => updateOutputField(idx, 'name', e.target.value)}
+                />
+                <select
+                  value={output.dtype}
+                  onChange={(e) => updateOutputField(idx, 'dtype', e.target.value)}
+                >
+                  <option value="string">string</option>
+                  <option value="integer">integer</option>
+                  <option value="float">float</option>
+                  <option value="boolean">boolean</option>
+                  <option value="array">array</option>
+                  <option value="object">object</option>
+                </select>
+                <button 
+                  className="btn btn-danger btn-sm"
+                  onClick={() => removeOutputField(idx)}
+                  title="Remove field"
+                >
+                  ×
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="schema-actions">
+          <button className="btn btn-primary" onClick={handleSaveSchema}>
+            Save Schema
+          </button>
+          <button className="btn btn-secondary" onClick={handleCancelEdit}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="card schema-card">
+      <div className="card-header">
+        <h3>Schema</h3>
+        <button 
+          className="btn btn-secondary btn-sm"
+          onClick={() => setEditMode(!editMode)}
+        >
+          {editMode ? 'View' : 'Edit'}
+        </button>
+      </div>
+
+      {editMode ? renderEditor() : renderSignature()}
+
+      {metadata?.input_example && (
+        <div className="schema-section">
+          <h4>Input Example</h4>
+          <pre className="example-code">
+            {JSON.stringify(
+              typeof metadata.input_example === 'string' 
+                ? JSON.parse(metadata.input_example) 
+                : metadata.input_example, 
+              null, 
+              2
+            )}
+          </pre>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default SchemaEditor;
