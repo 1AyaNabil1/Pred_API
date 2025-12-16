@@ -10,7 +10,7 @@ function App() {
   const [selectedModel, setSelectedModel] = useState(null);
   const [config, setConfig] = useState({
     apiBaseUrl: 'http://localhost:8000',
-    mlflowBaseUrl: 'http://localhost:5000',
+    mlflowBaseUrl: 'http://localhost:5001',
     modelServingUrl: '',
     authToken: ''
   });

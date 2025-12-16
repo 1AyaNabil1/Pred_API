@@ -26,7 +26,7 @@ function Settings({ config, onConfigUpdate }) {
   const handleReset = () => {
     const defaultConfig = {
       apiBaseUrl: 'http://localhost:8000',
-      mlflowBaseUrl: 'http://localhost:5000',
+      mlflowBaseUrl: 'http://localhost:5001',
       modelServingUrl: '',
       authToken: ''
     };
@@ -67,7 +67,7 @@ function Settings({ config, onConfigUpdate }) {
               name="mlflowBaseUrl"
               value={localConfig.mlflowBaseUrl}
               onChange={handleChange}
-              placeholder="http://localhost:5000"
+              placeholder="http://localhost:5001"
             />
             <small>URL of your MLflow tracking server</small>
           </div>

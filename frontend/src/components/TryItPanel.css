@@ -338,3 +338,78 @@
   margin: 0;
   font-weight: 600;
 }
+
+/* ============================================
+   CANONICAL INPUT CONTRACT - Validation Styles
+   ============================================ */
+
+.input-format-help {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.input-format-help p {
+  margin: 0.25rem 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.input-format-help strong {
+  color: var(--text-primary);
+}
+
+.input-format-help em {
+  color: #3b82f6;
+  font-family: monospace;
+}
+
+.input-textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 1rem;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-primary);
+  resize: vertical;
+  transition: border-color 0.2s ease;
+}
+
+.input-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.input-textarea.input-valid {
+  border-color: #22c55e;
+}
+
+.input-textarea.input-error {
+  border-color: #ef4444;
+}
+
+.validation-error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  margin-top: 0.75rem;
+  color: #ef4444;
+  font-size: 0.85rem;
+}
+
+.validation-success {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  margin-top: 0.75rem;
+  color: #22c55e;
+  font-size: 0.85rem;
+}

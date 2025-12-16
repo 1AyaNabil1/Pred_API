@@ -1,73 +1,120 @@
 import React, { useState, useEffect } from 'react';
 import './TryItPanel.css';
 
+/**
+ * TryItPanel - Model Invocation Component
+ *
+ * CANONICAL INPUT CONTRACT (NON-NEGOTIABLE):
+ * ==========================================
+ * This component sends predictions in exactly this format:
+ *
+ * {
+ *   "inputs": [
+ *     [x1, x2, x3, x4],
+ *     [y1, y2, y3, y4]
+ *   ]
+ * }
+ *
+ * Where:
+ * - "inputs" is a 2D list (list of lists)
+ * - Each row has exactly 4 numeric values
+ * - No objects, strings, or alternate keys
+ *
+ * This component enforces the contract by:
+ * 1. Accepting only a 2D JSON array as input
+ * 2. Validating structure before submission
+ * 3. Blocking invocation if validation fails
+ */
 function TryItPanel({ modelName, version, metadata, config }) {
-  const [inputs, setInputs] = useState({});
+  // State for 2D array input as text
+  const [inputText, setInputText] = useState('[\n  [5.1, 3.5, 1.4, 0.2],\n  [6.0, 2.7, 5.1, 1.6]\n]');
+  const [validationError, setValidationError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState(null);
   const [error, setError] = useState(null);
   const [latency, setLatency] = useState(null);
   const [showCurl, setShowCurl] = useState(false);
 
+  // Validate the input text whenever it changes
   useEffect(() => {
-    // Initialize inputs from schema or input_example
-    if (metadata?.signature) {
-      try {
-        const sig = typeof metadata.signature === 'string' 
-          ? JSON.parse(metadata.signature) 
-          : metadata.signature;
+    validateInput(inputText);
+  }, [inputText]);
+
+  /**
+   * Validates the input text against the canonical contract.
+   * 
+   * Requirements:
+   * 1. Must be valid JSON
+   * 2. Must be a 2D array (list of lists)
+   * 3. Each row must have exactly 4 values
+   * 4. All values must be numeric
+   * 
+   * @param {string} text - The input text to validate
+   * @returns {Array|null} - The parsed array if valid, null otherwise
+   */
+  const validateInput = (text) => {
+    try {
+      const parsed = JSON.parse(text);
+      
+      // Must be an array
+      if (!Array.isArray(parsed)) {
+        setValidationError('Input must be a 2D array. Expected: [[x1, x2, x3, x4], ...]');
+        return null;
+      }
+      
+      // Must not be empty
+      if (parsed.length === 0) {
+        setValidationError('Input array cannot be empty. Provide at least one row.');
+        return null;
+      }
+      
+      // Each element must be an array of exactly 4 numbers
+      for (let i = 0; i < parsed.length; i++) {
+        const row = parsed[i];
         
-        if (sig.inputs && Array.isArray(sig.inputs)) {
-          const initialInputs = {};
-          sig.inputs.forEach(input => {
-            const fieldName = input.name || input.type || 'value';
-            initialInputs[fieldName] = '';
-          });
-          setInputs(initialInputs);
+        if (!Array.isArray(row)) {
+          setValidationError(`Row ${i} is not an array. Each row must be [x1, x2, x3, x4].`);
+          return null;
         }
-      } catch (e) {
-        console.error('Failed to parse signature:', e);
+        
+        if (row.length !== 4) {
+          setValidationError(`Row ${i} has ${row.length} values. Each row must have exactly 4 numeric values.`);
+          return null;
+        }
+        
+        for (let j = 0; j < row.length; j++) {
+          const value = row[j];
+          if (typeof value !== 'number' || isNaN(value) || !isFinite(value)) {
+            setValidationError(`Value at row ${i}, column ${j} is not a valid number.`);
+            return null;
+          }
+        }
       }
-    }
-
-    if (metadata?.input_example) {
-      try {
-        const example = typeof metadata.input_example === 'string'
-          ? JSON.parse(metadata.input_example)
-          : metadata.input_example;
-        setInputs(example);
-      } catch (e) {
-        console.error('Failed to parse input_example:', e);
-      }
-    }
-  }, [metadata]);
-
-  const handleInputChange = (key, value) => {
-    setInputs({
-      ...inputs,
-      [key]: value
-    });
-  };
-
-  const addCustomField = () => {
-    const fieldName = prompt('Enter field name:');
-    if (fieldName && !inputs[fieldName]) {
-      setInputs({
-        ...inputs,
-        [fieldName]: ''
-      });
+      
+      setValidationError(null);
+      return parsed;
+    } catch (e) {
+      setValidationError(`Invalid JSON: ${e.message}`);
+      return null;
     }
   };
 
-  const removeField = (key) => {
-    const newInputs = { ...inputs };
-    delete newInputs[key];
-    setInputs(newInputs);
-  };
-
+  /**
+   * Handles the model invocation.
+   * 
+   * Sends the request in the canonical format:
+   * { "inputs": [[x1, x2, x3, x4], ...] }
+   */
   const handleInvoke = async () => {
-    if (!config.modelServingUrl) {
-      setError('Model serving URL not configured. Please set it in Settings.');
+    const parsedInputs = validateInput(inputText);
+    
+    if (!parsedInputs) {
+      setError('Cannot invoke: Input validation failed. Please fix the errors above.');
+      return;
+    }
+    
+    if (!config.apiBaseUrl) {
+      setError('API Base URL not configured. Please set it in Settings.');
       return;
     }
 
@@ -76,40 +123,16 @@ function TryItPanel({ modelName, version, metadata, config }) {
     setResponse(null);
     setLatency(null);
 
-    const modelUrl = `${config.modelServingUrl}/invocations`;
-
     try {
-      // Convert inputs to appropriate types
-      const processedInputs = {};
-      Object.keys(inputs).forEach(key => {
-        let value = inputs[key];
-        // Try to parse as JSON if it looks like a number or object
-        if (typeof value === 'string') {
-          try {
-            if (value === 'true' || value === 'false') {
-              value = value === 'true';
-            } else if (!isNaN(value) && value !== '') {
-              value = parseFloat(value);
-            } else if (value.startsWith('{') || value.startsWith('[')) {
-              value = JSON.parse(value);
-            }
-          } catch (e) {
-            // Keep as string if parsing fails
-          }
-        }
-        processedInputs[key] = value;
-      });
-
-      const apiResponse = await fetch(`${config.apiBaseUrl}/serve/invoke`, {
+      // Send the canonical format - NO WRAPPING, NO TRANSFORMATION
+      const apiResponse = await fetch(`${config.apiBaseUrl}/predict/${modelName}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(config.authToken && { 'Authorization': `Bearer ${config.authToken}` })
         },
         body: JSON.stringify({
-          model_url: modelUrl,
-          inputs: processedInputs,
-          auth_token: config.authToken
+          inputs: parsedInputs  // Direct pass-through, no wrapping
         })
       });
 
@@ -128,31 +151,53 @@ function TryItPanel({ modelName, version, metadata, config }) {
     }
   };
 
+  /**
+   * Generates a curl command for the canonical request format.
+   */
   const generateCurlCommand = () => {
-    const modelUrl = `${config.modelServingUrl}/invocations`;
+    const apiUrl = `${config.apiBaseUrl}/predict/${modelName}`;
     const headers = ['-H "Content-Type: application/json"'];
     
     if (config.authToken) {
       headers.push(`-H "Authorization: Bearer ${config.authToken}"`);
     }
 
-    const payload = JSON.stringify({ inputs }, null, 2);
+    // Parse and reformat for clean output
+    let payload;
+    try {
+      const parsed = JSON.parse(inputText);
+      payload = JSON.stringify({ inputs: parsed }, null, 2);
+    } catch (e) {
+      payload = '{"inputs": [[5.1, 3.5, 1.4, 0.2]]}';
+    }
 
-    return `curl -X POST "${modelUrl}" \\
+    return `curl -X POST "${apiUrl}" \\
 ${headers.join(' \\\n')} \\
 -d '${payload}'`;
   };
 
+  /**
+   * Generates a JavaScript fetch snippet for the canonical request format.
+   */
   const generateFetchSnippet = () => {
     const apiUrl = `${config.apiBaseUrl}/predict/${modelName}`;
     
-    return `fetch('${apiUrl}', {
+    let inputsStr;
+    try {
+      const parsed = JSON.parse(inputText);
+      inputsStr = JSON.stringify(parsed);
+    } catch (e) {
+      inputsStr = '[[5.1, 3.5, 1.4, 0.2]]';
+    }
+
+    return `// CANONICAL FORMAT: inputs is a 2D array, each row has exactly 4 values
+fetch('${apiUrl}', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
-${config.authToken ? `    'Authorization': 'Bearer ${config.authToken}',\n` : ''  },
+${config.authToken ? `    'Authorization': 'Bearer ${config.authToken}',\n` : ''}  },
   body: JSON.stringify({
-    inputs: [${JSON.stringify(Object.values(inputs))}]
+    inputs: ${inputsStr}
   })
 })
 .then(response => response.json())
@@ -166,13 +211,20 @@ ${config.authToken ? `    'Authorization': 'Bearer ${config.authToken}',\n` : ''
   };
 
   const getApiUrl = () => {
-    if (!config.modelServingUrl) return 'Not configured';
-    return `${config.modelServingUrl}/invocations`;
+    if (!config.apiBaseUrl) return 'Not configured';
+    return `${config.apiBaseUrl}/predict/${modelName}`;
   };
 
   const copyEndpoint = () => {
     navigator.clipboard.writeText(getApiUrl());
     alert('Endpoint copied to clipboard!');
+  };
+
+  /**
+   * Resets the input to the default example.
+   */
+  const resetToDefault = () => {
+    setInputText('[\n  [5.1, 3.5, 1.4, 0.2],\n  [6.0, 2.7, 5.1, 1.6]\n]');
   };
 
   return (
@@ -182,7 +234,7 @@ ${config.authToken ? `    'Authorization': 'Bearer ${config.authToken}',\n` : ''
       <div className="api-info-section">
         <div className="api-info-header">
           <h4>API Endpoint</h4>
-          {config.modelServingUrl ? (
+          {config.apiBaseUrl ? (
             <button className="btn btn-sm btn-secondary" onClick={copyEndpoint}>
               Copy
             </button>
@@ -192,9 +244,9 @@ ${config.authToken ? `    'Authorization': 'Bearer ${config.authToken}',\n` : ''
         </div>
         <div className="endpoint-container">
           <div className="endpoint-url">{getApiUrl()}</div>
-          {!config.modelServingUrl && (
+          {!config.apiBaseUrl && (
             <small className="endpoint-hint">
-              Configure the Model Serving URL in Settings to enable testing
+              Configure the API Base URL in Settings to enable testing
             </small>
           )}
         </div>
@@ -218,7 +270,7 @@ ${config.authToken ? `    'Authorization': 'Bearer ${config.authToken}',\n` : ''
             )}
             <div className="param-item">
               <span className="param-label">Body Format:</span>
-              <code className="param-value">{`{"inputs": {...}}`}</code>
+              <code className="param-value">{`{"inputs": [[x1, x2, x3, x4], ...]}`}</code>
             </div>
           </div>
         </div>
@@ -226,36 +278,35 @@ ${config.authToken ? `    'Authorization': 'Bearer ${config.authToken}',\n` : ''
 
       <div className="inputs-section">
         <div className="section-header">
-          <h4>Request Inputs</h4>
-          <button className="btn btn-sm btn-secondary" onClick={addCustomField}>
-            + Add Field
+          <h4>Input Data (2D Array)</h4>
+          <button className="btn btn-sm btn-secondary" onClick={resetToDefault}>
+            Reset to Example
           </button>
         </div>
+        
+        <div className="input-format-help">
+          <p><strong>Required Format:</strong> A 2D array where each row has exactly 4 numeric values.</p>
+          <p><em>Example: [[5.1, 3.5, 1.4, 0.2], [6.0, 2.7, 5.1, 1.6]]</em></p>
+        </div>
 
-        {Object.keys(inputs).length === 0 ? (
-          <p className="no-inputs">No input fields defined. Click "+ Add Field" to add custom inputs.</p>
-        ) : (
-          <div className="input-fields">
-            {Object.keys(inputs).map(key => (
-              <div key={key} className="input-group">
-                <label>{key}:</label>
-                <div className="input-with-remove">
-                  <input
-                    type="text"
-                    value={inputs[key]}
-                    onChange={(e) => handleInputChange(key, e.target.value)}
-                    placeholder={`Enter ${key}`}
-                  />
-                  <button
-                    className="btn btn-danger btn-sm"
-                    onClick={() => removeField(key)}
-                    title="Remove field"
-                  >
-                    ×
-                  </button>
-                </div>
-              </div>
-            ))}
+        <textarea
+          className={`input-textarea ${validationError ? 'input-error' : 'input-valid'}`}
+          value={inputText}
+          onChange={(e) => setInputText(e.target.value)}
+          placeholder='Enter a 2D array: [[x1, x2, x3, x4], ...]'
+          rows={6}
+          spellCheck={false}
+        />
+        
+        {validationError && (
+          <div className="validation-error">
+            {validationError}
+          </div>
+        )}
+        
+        {!validationError && inputText && (
+          <div className="validation-success">
+            Valid input format
           </div>
         )}
       </div>
@@ -263,24 +314,30 @@ ${config.authToken ? `    'Authorization': 'Bearer ${config.authToken}',\n` : ''
       <button
         className="btn btn-primary btn-full invoke-button"
         onClick={handleInvoke}
-        disabled={loading || !config.modelServingUrl}
-        title={!config.modelServingUrl ? 'Please configure Model Serving URL in Settings first' : 'Click to invoke the model'}
+        disabled={loading || !config.apiBaseUrl || validationError}
+        title={
+          !config.apiBaseUrl 
+            ? 'Please configure API Base URL in Settings first' 
+            : validationError 
+              ? 'Fix validation errors before invoking' 
+              : 'Click to invoke the model'
+        }
       >
         {loading ? 'Invoking...' : 'Invoke Model'}
       </button>
 
-      {!config.modelServingUrl && (
+      {!config.apiBaseUrl && (
         <div className="warning-message">
-          ⚠️ <strong>Configuration Required:</strong> Please configure the Model Serving URL in Settings to enable model invocation.
+          <strong>Configuration Required:</strong> Please configure the API Base URL in Settings to enable model invocation.
         </div>
       )}
 
-      {error && <div className="error">❌ {error}</div>}
+      {error && <div className="error"><strong>Error:</strong> {error}</div>}
 
       {response && (
         <div className="response-section">
           <div className="response-header">
-            <h4>✅ Response</h4>
+            <h4>Response</h4>
             {latency && <span className="latency">⚡ {latency}ms</span>}
           </div>
           <pre className="response-code">

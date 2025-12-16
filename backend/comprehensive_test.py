@@ -289,13 +289,13 @@ def main():
 
     # Test 1: Check backend health
     if not test_health():
-        print_error("\n❌ Backend is not running. Please start it first.")
+        print_error("\nBackend is not running. Please start it first.")
         sys.exit(1)
 
     # Test 2: Check MLflow
     mlflow_running = check_mlflow_running()
     if not mlflow_running:
-        print_warning("\n⚠️  Some tests will be skipped without MLflow")
+        print_warning("\nSome tests will be skipped without MLflow")
 
     # Test 3: Search models
     success, models = test_search_models()
@@ -363,14 +363,14 @@ def main():
     print("=" * 60)
     print(f"""
 Backend Features Tested:
-✓ 1. View all models (search)
-✓ 2. Upload new model (create version)
-✓ 3. Get model version details (with input/output schema)
-✓ 4. Update model metadata (description)
-✓ 5. Update version metadata (description)
-✓ 6. Activate/Deactivate models (transition stage)
-✓ 7. Delete models
-✓ 8. Invoke model (test API call)
+1. View all models (search)
+2. Upload new model (create version)
+3. Get model version details (with input/output schema)
+4. Update model metadata (description)
+5. Update version metadata (description)
+6. Activate/Deactivate models (transition stage)
+7. Delete models
+8. Invoke model (test API call)
 
 All required functionality is implemented in the backend!
     """)

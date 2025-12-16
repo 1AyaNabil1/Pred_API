@@ -308,7 +308,7 @@ function SchemaEditor({ modelName, version, metadata, config }) {
 
         <div className="schema-actions">
           <button className="btn btn-primary" onClick={handleSaveSchema}>
-            Save Schema
+            💾 Save Schema
           </button>
           <button className="btn btn-secondary" onClick={handleCancelEdit}>
             Cancel

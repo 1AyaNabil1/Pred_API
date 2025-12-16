@@ -408,7 +408,14 @@ async def invoke_model(request: InvokeModelRequest):
         else:
             headers["Authorization"] = f"Bearer {request.auth_token}"
     
-    payload = {"inputs": request.inputs}
+    # Format payload for MLflow serving endpoint - MLflow expects specific formats
+    input_data = request.inputs
+    if isinstance(input_data, dict):
+        payload = {"dataframe_records": [input_data]}
+    elif isinstance(input_data, list):
+        payload = {"instances": input_data}
+    else:
+        payload = {"inputs": input_data}
     
     try:
         start_time = time.time()

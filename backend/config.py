@@ -1,6 +1,10 @@
 """
 Configuration management for the MLflow Model Registry Proxy.
 Handles environment variables and application settings.
+
+References:
+- MLflow Model Serving: https://mlflow.org/docs/latest/models.html#local-rest-server
+- MLflow Model Registry: https://mlflow.org/docs/latest/model-registry.html
 """
 import os
 from typing import List
@@ -20,9 +24,24 @@ class Settings(BaseSettings):
     API_KEY: str = ""  # Leave empty to disable API key authentication
     ALLOWED_ORIGINS: List[str] = ["http://localhost:3000"]  # Frontend URLs
     
-    # MLflow Configuration
+    # MLflow Tracking Server Configuration
+    # Reference: https://mlflow.org/docs/latest/tracking.html
     MLFLOW_BASE_URL: str = "http://localhost:5001"
     MLFLOW_AUTH_TOKEN: str = ""
+    
+    # MLflow Model Serving Configuration
+    # Reference: https://mlflow.org/docs/latest/models.html#local-rest-server
+    #
+    # IMPORTANT: MLflow does NOT automatically serve models.
+    # You must explicitly start model serving using:
+    #   mlflow models serve --model-uri "models:/ModelName/Production" --port 5002 --no-conda
+    #
+    # Supported Model URI formats:
+    #   - models:/<model_name>/<stage>   (e.g., models:/MyModel/Production)
+    #   - models:/<model_name>/<version> (e.g., models:/MyModel/1)
+    #   - runs:/<run_id>/artifacts/model
+    MODEL_SERVING_URL: str = "http://localhost:5002"
+    MODEL_SERVING_ENABLED: bool = True
     
     # File Upload Limits
     MAX_FILE_SIZE_MB: int = 100
